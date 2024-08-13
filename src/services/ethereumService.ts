@@ -2,11 +2,11 @@ import { ethers } from "ethers";
 import fs from 'fs';
 import dotenv from 'dotenv';
 import { SubscriptionManager, SecretsManager } from '@chainlink/functions-toolkit';
-import { borrowTokenParamType } from "../types";
+import { borrowTokenParamType, FulfillResponseType, LendexEvent } from "../types";
 import { getAbiForContract } from "../utils/ethereum-get-contract-abi";
 import { Alchemy, AlchemyEventType, Utils } from "alchemy-sdk";
 import { getEthereumNetwork } from "../utils/ethereum-network-mapping";
-import { FulfillResponseType, LendexEvent, decodeERC721ReceivedEvent, decodeFulfillResponseEvent } from "../utils/ethereum-lendex-events";
+import { decodeERC721ReceivedEvent, decodeFulfillResponseEvent } from "../utils/ethereum-lendex-events";
 
 // Load environment variables from .env file
 dotenv.config();

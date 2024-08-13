@@ -3,7 +3,8 @@ import cors from 'cors';
 import { ethRoutes } from './routes/ethereum';
 import dotenv from 'dotenv';
 import { listenLendexEvent } from './services/ethereumService';
-import { decodeFulfillResponseEvent, LendexEvent } from './utils/ethereum-lendex-events';
+import { decodeFulfillResponseEvent } from './utils/ethereum-lendex-events';
+import { LendexEvent } from './types';
 
 // Load environment variables from .env file
 dotenv.config();
