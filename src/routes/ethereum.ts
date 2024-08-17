@@ -1,12 +1,11 @@
 import express from 'express';
 import { borrowToken, getEthBalance, payDebt } from '../services/ethereumService';
 
-const ethRoutes = express.Router()
+const ethRoutes = express.Router();
 
-ethRoutes.post('/borrow', async (req, res) => {
+ethRoutes.get('/borrow', async (req, res) => {
   try {
-    const { loan, lenderAddress, tokenId } = req.body;
-    const borrowTypeObject = await borrowToken(loan, lenderAddress, tokenId);
+    const borrowTypeObject = await borrowToken();
     return res.json(borrowTypeObject);
   } catch (error) {
     console.error("Error processing borrow request:", error);
@@ -14,10 +13,9 @@ ethRoutes.post('/borrow', async (req, res) => {
   }
 });
 
-ethRoutes.post('/pay-debt', async (req, res) => {
+ethRoutes.get('/pay-debt', async (req, res) => {
   try {
-    const { contractAddress, tokenId, lenderAddress } = req.body;
-    const payDebtTypeObject = await payDebt(contractAddress, tokenId, lenderAddress);
+    const payDebtTypeObject = await payDebt();
     return res.json(payDebtTypeObject);
   } catch (error) {
     console.error("Error processing pay debt request:", error);

@@ -4,7 +4,7 @@ const { decode } = await import("https://deno.land/x/cbor@v1.5.9/decode.js");
 const { encodeHex } = await import("https://deno.land/std@0.224.0/encoding/hex.ts");
 const ethers = await import("npm:ethers@6.10.0");
 
-const policyId = "eef2d298b856d433d01b83b5b2a4318767845589bee6fecc890c8655";
+const policyId = "9cd3e3a2ecd8cf4bb81da108bdc4366a40208c05e568ac913ae71cec"; // generated from nonce: fromText("Lendex#2");
 const contractAddress = "addr_test1wrt2zjjdqfaulpcmnv6gwzavpaajjgsxfklk3zmjnx3y30qz42a4w";
 
 // Arguments can be provided when a request is initated on-chain and used in the request source code as shown below
@@ -67,7 +67,8 @@ async function getTokenHistory(token) {
     const blockfrostResponse = await blockfrostRequest;
   
     if (blockfrostResponse.error) {
-      throw new Error("Blockfrost Error");
+      console.log('Blockfrost error:', url, token, apiKey, blockfrostResponse.error);
+      throw new Error(`Blockfrost Error, url: ${url}, apiKey: ${apiKey}, token: ${token}, error: ${blockfrostResponse.error}`);
     }
 
     return blockfrostResponse.data;
