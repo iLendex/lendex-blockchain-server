@@ -49,6 +49,8 @@ export const launchLoan = pgTable("launch_loan", {
 	acceptLoanRequestId: text("accept_loan_request_id"),
 	payDebtRequestId: text("pay_debt_request_id"),
 	assetLockedTxHash: text("asset_locked_tx_hash"),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	cardanoMinAdaUtxo: bigint("cardano_min_ada_utxo", { mode: "number" }),
 },
 (table) => {
 	return {

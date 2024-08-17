@@ -81,6 +81,7 @@ export const loanTable = pgTable(
         cardanoTxHash: text("cardano_tx_hash"),
         paybackAmount: bigint("payback_amount", { mode: 'number' }),
         cardanoAssetName: text("cardano_asset_name"),
+        cardanoMinAdaUtxo: bigint("cardano_min_ada_utxo", { mode: "number" }),
         acceptLoanRequestId: text("accept_loan_request_id"),
         payDebtRequestId: text("pay_debt_request_id"),
     },
