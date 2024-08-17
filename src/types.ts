@@ -36,9 +36,10 @@ export enum FulfillResponseType {
 }
 
 export type LoanInfo = { 
-  borrower: string, 
   loan: number, 
-  apr: { n: number, d: number} 
+  borrower?: string, 
+  lender?: string, 
+  apr?: { n: number, d: number} 
 }
 
 export type FulfilledResponse = { 

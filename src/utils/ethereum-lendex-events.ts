@@ -27,11 +27,19 @@ export function decodeFulfillResponseEvent(data: any): FulfilledResponse {
     const success = !error || error == '0x';
     let loanInfo: LoanInfo;
     if (success) {
-        const [borrower, loan, fee_n, fee_d] = ethers.utils.defaultAbiCoder.decode(
-            ['string', 'int', 'int', 'int'],
-            response
-        );
-        loanInfo = { borrower, loan: loan.toNumber(), apr: {n: fee_n.toNumber(), d: fee_d.toNumber()} }
+        if (type == FulfillResponseType.BORROW_CHECK) {
+            const [borrower, loan, fee_n, fee_d] = ethers.utils.defaultAbiCoder.decode(
+                ['string', 'int', 'int', 'int'],
+                response
+            );
+            loanInfo = { borrower, loan: loan.toNumber(), apr: {n: fee_n.toNumber(), d: fee_d.toNumber()} }
+        } else if (type == FulfillResponseType.PAY_DEBT_CHECK) {
+            const [lender, loan] = ethers.utils.defaultAbiCoder.decode(
+                ['string', 'int'],
+                response
+            );
+            loanInfo = { lender, loan: loan.toNumber() }
+        }
     }
  
     return { type: type || FulfillResponseType.UNKNOWN, success, loanInfo };
