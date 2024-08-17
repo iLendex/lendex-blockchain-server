@@ -9,12 +9,12 @@ const fulfillResponseTypes = [
     FulfillResponseType.BORROWER_CLAIM_CHECK,
 ]
 
-export function decodeERC721ReceivedEvent(data: any): { contract: string, tokenId: number } {
-    const [contract, tokenId] = ethers.utils.defaultAbiCoder.decode(
-        ["address", "uint256"],
+export function decodeERC721ReceivedEvent(data: any): { contract: string, tokenId: string, refToken: string } {
+    const [contract, tokenId, refToken] = ethers.utils.defaultAbiCoder.decode(
+        ["address", "uint256", "uint256"],
         data
     );
-    return { contract, tokenId: tokenId.toNumber() };
+    return { contract, tokenId: tokenId.toString(), refToken: refToken.toString() };
 }
 
 export function decodeFulfillResponseEvent(data: any): FulfilledResponse {

@@ -7,6 +7,8 @@ import { getAbiForContract } from "../utils/ethereum-get-contract-abi";
 import { Alchemy, AlchemyEventType, Utils } from "alchemy-sdk";
 import { getEthereumNetwork } from "../utils/ethereum-network-mapping";
 import { decodeERC721ReceivedEvent, decodeFulfillResponseEvent } from "../utils/ethereum-lendex-events";
+import { getLoanByFliters, updateLoan } from "../db/queries";
+import { loanStateEnum, loanTable } from "../db/schema";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -194,37 +196,54 @@ export async function payDebt(contractAddress: string, tokenId: string, lenderAd
   return payDebtTypeObject;
 }
 
-export function listenLendexEvent(event: LendexEvent, cb: (...args: any) => void) {
+export function listenLendexEvent(event: LendexEvent) {
   // Listen for all events from the contract
   const eventName: AlchemyEventType = { address: contractAddress }
   if (event) {
     eventName.topics = [Utils.id(event)];
   }
   console.log('Listening to Event:', eventName, event);
-  
+
   alchemy.ws.on(eventName,
-    (log) => {
+    async (log) => {
       console.log(`New ${event} event received:`, log);
 
       // Decode the event data
       switch (event) {
         case LendexEvent.ERC721Received: {
-          const {contract, tokenId} = decodeERC721ReceivedEvent(log.data);
-          cb(contract, tokenId);
+          const { contract, tokenId, refToken } = decodeERC721ReceivedEvent(log.data);
+          console.log('ERC721Received: ', { contract, tokenId, refToken });
+          const loan = await getLoanByFliters({ 
+            'contractAddress': contract.toLowerCase(),
+            'assetId': tokenId,
+            'state': loanStateEnum.enumValues[7]
+          });
+            if (loan) {
+              await updateLoan(loan.id, { state:  loanStateEnum.enumValues[0], refToken, assetTxHash: log.transactionHash });
+            }
           break;
         }
         case LendexEvent.FulfillResponse: {
           const { type, success, loanInfo } = decodeFulfillResponseEvent(log.data);
-          if (type != FulfillResponseType.UNKNOWN) {
+          if (success && type != FulfillResponseType.UNKNOWN) {
             const requestId = log.topics[1];
-            cb(requestId, type, success, loanInfo);
+            console.log('FulfillResponse: ', { requestId,  type, success, loanInfo });
+            const state = type == FulfillResponseType.BORROW_CHECK ? loanStateEnum.enumValues[3] : loanStateEnum.enumValues[2];
+            const loan = await getLoanByFliters({ 'acceptLoanRequestId': requestId} );
+            if (loan) {
+              try {
+                await updateLoan(loan.id, { state });
+              } catch (error) {
+                console.error(error);
+              }
+            }
             break
           }
         }
-      
+
         default:
           break;
       }
-    } 
+    }
   );
 }

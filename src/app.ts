@@ -3,9 +3,8 @@ import cors from 'cors';
 import { ethRoutes } from './routes/ethereum';
 import dotenv from 'dotenv';
 import { listenLendexEvent } from './services/ethereumService';
-import { decodeFulfillResponseEvent } from './utils/ethereum-lendex-events';
 import { LendexEvent } from './types';
-
+import { getAllLoans } from './db/queries';
 // Load environment variables from .env file
 dotenv.config();
 
@@ -25,20 +24,21 @@ app.use('/*', cors({
 // Use the built-in JSON middleware
 app.use(express.json());
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   res.send('Ethereum Node Server');
 });
+
+app.get('/loans', async (req, res) => {
+  const loans = await getAllLoans();
+  res.json(loans);
+});
+
 
 // Mount the ethRoutes
 app.use('/eth', ethRoutes);
 
-listenLendexEvent(LendexEvent.ERC721Received, (...data) => {
-  console.log('ERC721Received: ', data);
-});
-
-listenLendexEvent(LendexEvent.FulfillResponse, (...data) => {
-  console.log('FulfillResponse: ', data);
-});
+listenLendexEvent(LendexEvent.ERC721Received);
+listenLendexEvent(LendexEvent.FulfillResponse);
 
 app.listen(port, () => {
   return console.log(`Express is listening at http://localhost:${port}`);

@@ -23,7 +23,7 @@ export interface payDebtParamType {
 }
 
 export enum LendexEvent {
-  ERC721Received = "ERC721Received(address,uint256)",
+  ERC721Received = "ERC721Received(address,uint256,uint256)",
   FulfillResponse = "FulfillResponse(bytes32,uint8,bytes,bytes)",
 }
 
