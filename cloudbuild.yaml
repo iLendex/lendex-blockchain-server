@@ -1,68 +1,8 @@
-options:
-  logging: CLOUD_LOGGING_ONLY
-
-serviceAccount: '460828280733-compute@developer.gserviceaccount.com'
-
 steps:
-  # Step 1: Set up SSH key
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        mkdir -p /root/.ssh
-        gcloud secrets versions access latest --secret=cloud-build-ssh-key > /root/.ssh/id_rsa
-        chmod 600 /root/.ssh/id_rsa
-        ssh-keyscan -H 34.138.87.118 >> /root/.ssh/known_hosts
-
-  # Step 2: Pull the latest code and set up environment
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no cloud-build@34.138.87.118 "cd /app && git pull"
-        
-        # Create .env file with secrets
-        echo "ETHEREUM_RPC_URL=$(gcloud secrets versions access latest --secret=ETHEREUM_RPC_URL)" >> .env
-        echo "ETHEREUM_PRIVATE_KEY=$(gcloud secrets versions access latest --secret=ETHEREUM_PRIVATE_KEY)" >> .env
-        echo "LENDEX_CONTRACT_ADDRESS=$(gcloud secrets versions access latest --secret=LENDEX_CONTRACT_ADDRESS)" >> .env
-        echo "BLOCKFROST_PREPROD_API_KEY=$(gcloud secrets versions access latest --secret=BLOCKFROST_PREPROD_API_KEY)" >> .env
-        echo "CHAINLINK_SOURCE_HASH=$(gcloud secrets versions access latest --secret=CHAINLINK_SOURCE_HASH)" >> .env
-        echo "CHAINLINK_CONSUMER_ADDRESS=$(gcloud secrets versions access latest --secret=CHAINLINK_CONSUMER_ADDRESS)" >> .env
-        echo "PROVIDER_RPC_URL=$(gcloud secrets versions access latest --secret=PROVIDER_RPC_URL)" >> .env
-        echo "PROVIDER_API_KEY=$(gcloud secrets versions access latest --secret=PROVIDER_API_KEY)" >> .env
-        echo "CHAINLINK_TOKEN_ADDRESS=$(gcloud secrets versions access latest --secret=CHAINLINK_TOKEN_ADDRESS)" >> .env
-        echo "CHAINLINK_FUNCTIONS_ROUTER=$(gcloud secrets versions access latest --secret=CHAINLINK_FUNCTIONS_ROUTER)" >> .env
-        echo "CHAINLINK_SUBSCRIPTION_ID=$(gcloud secrets versions access latest --secret=CHAINLINK_SUBSCRIPTION_ID)" >> .env
-        echo "CHAINLINK_DON_ID=$(gcloud secrets versions access latest --secret=CHAINLINK_DON_ID)" >> .env
-        echo "CHAINLINK_ENCRYPTED_SECRETS_UPLOAD_ENDPOINTS=$(gcloud secrets versions access latest --secret=CHAINLINK_ENCRYPTED_SECRETS_UPLOAD_ENDPOINTS)" >> .env
-        echo "ETHERSCAN_PREPROD_API_KEY=$(gcloud secrets versions access latest --secret=ETHERSCAN_PREPROD_API_KEY)" >> .env
-        echo "NETWORK=$(gcloud secrets versions access latest --secret=NETWORK)" >> .env
-        
-        # Copy .env file to the instance
-        scp -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no .env cloud-build@34.138.87.118:/app/.env
-
-  # Step 3: Install dependencies
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no cloud-build@34.138.87.118 "cd /app && npm install"
-
-  # Step 4: Build the project (if necessary)
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no cloud-build@34.138.87.118 "cd /app && npm start"
-
-  # Step 5: Restart the server
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no cloud-build@34.138.87.118 "cd /app && pm2 restart all"
+- name: 'gcr.io/cloud-builders/npm'
+  args: ['install']
+- name: 'gcr.io/cloud-builders/npm'
+  args: ['run', 'build']
+- name: 'gcr.io/cloud-builders/gcloud'
+  args: ['app', 'deploy']
+timeout: '1600s'
