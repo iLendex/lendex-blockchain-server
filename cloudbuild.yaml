@@ -1,17 +1,15 @@
-
 options:
   logging: CLOUD_LOGGING_ONLY
-  
+
 steps:
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
-      - 'compute'
-      - 'ssh'
-      - 'lendex-small'
-      - '--zone=us-east1-b'
-      - '--command=cd /app && git pull && npm install && pm2 restart all'
+      - '-c'
       - |
+        gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && git pull"
+        
+        # Create .env file with secrets
         echo "ETHEREUM_RPC_URL=$(gcloud secrets versions access latest --secret=ETHEREUM_RPC_URL)" >> .env
         echo "ETHEREUM_PRIVATE_KEY=$(gcloud secrets versions access latest --secret=ETHEREUM_PRIVATE_KEY)" >> .env
         echo "LENDEX_CONTRACT_ADDRESS=$(gcloud secrets versions access latest --secret=LENDEX_CONTRACT_ADDRESS)" >> .env
@@ -27,3 +25,33 @@ steps:
         echo "CHAINLINK_ENCRYPTED_SECRETS_UPLOAD_ENDPOINTS=$(gcloud secrets versions access latest --secret=CHAINLINK_ENCRYPTED_SECRETS_UPLOAD_ENDPOINTS)" >> .env
         echo "ETHERSCAN_PREPROD_API_KEY=$(gcloud secrets versions access latest --secret=ETHERSCAN_PREPROD_API_KEY)" >> .env
         echo "NETWORK=$(gcloud secrets versions access latest --secret=NETWORK)" >> .env
+        
+        # Copy .env file to the instance
+        gcloud compute scp .env lendex-small:/app/.env --zone=us-east1-b
+
+  # Step 2: Install dependencies
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && npm install"
+
+  # Step 3: Build the project (if necessary)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && npm start"
+
+  # Step 4: Restart the server
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && pm2 restart all"
+
+# You might need to add this if you're using a custom service account
+# serviceAccount: 'projects/YOUR_PROJECT_ID/serviceAccounts/YOUR_SERVICE_ACCOUNT_EMAIL'
