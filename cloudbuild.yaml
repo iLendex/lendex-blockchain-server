@@ -1,6 +1,8 @@
 options:
   logging: CLOUD_LOGGING_ONLY
 
+serviceAccount: '460828280733-compute@developer.gserviceaccount.com'
+
 steps:
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
@@ -29,7 +31,7 @@ steps:
         # Copy .env file to the instance
         gcloud compute scp .env lendex-small:/app/.env --zone=us-east1-b
 
-  # Step 2: Install dependencies
+  # NPM INSTALL
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
@@ -37,7 +39,7 @@ steps:
       - |
         gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && npm install"
 
-  # Step 3: Build the project (if necessary)
+  # NPM START
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
@@ -45,13 +47,10 @@ steps:
       - |
         gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && npm start"
 
-  # Step 4: Restart the server
+  # RESTART
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && pm2 restart all"
-
-# You might need to add this if you're using a custom service account
-# serviceAccount: 'projects/YOUR_PROJECT_ID/serviceAccounts/YOUR_SERVICE_ACCOUNT_EMAIL'
