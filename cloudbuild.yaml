@@ -4,14 +4,24 @@ options:
 serviceAccount: '460828280733-compute@developer.gserviceaccount.com'
 
 steps:
-  # Step 1: Pull the latest code and set up environment
+  # Step 1: Set up SSH key
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        # Pull latest code
-        gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && git pull"
+        mkdir -p /root/.ssh
+        gcloud secrets versions access latest --secret=cloud-build-ssh-key > /root/.ssh/id_rsa
+        chmod 600 /root/.ssh/id_rsa
+        ssh-keyscan -H 34.138.87.118 >> /root/.ssh/known_hosts
+
+  # Step 2: Pull the latest code and set up environment
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no cloud-build@34.138.87.118 "cd /app && git pull"
         
         # Create .env file with secrets
         echo "ETHEREUM_RPC_URL=$(gcloud secrets versions access latest --secret=ETHEREUM_RPC_URL)" >> .env
@@ -31,28 +41,28 @@ steps:
         echo "NETWORK=$(gcloud secrets versions access latest --secret=NETWORK)" >> .env
         
         # Copy .env file to the instance
-        gcloud compute scp .env lendex-small:/app/.env --zone=us-east1-b
+        scp -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no .env cloud-build@34.138.87.118:/app/.env
 
-  # Step 2: Install dependencies
+  # Step 3: Install dependencies
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && npm install"
+        ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no cloud-build@34.138.87.118 "cd /app && npm install"
 
-  # Step 3: Build the project (if necessary)
+  # Step 4: Build the project (if necessary)
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && npm start"
+        ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no cloud-build@34.138.87.118 "cd /app && npm start"
 
-  # Step 4: Restart the server
+  # Step 5: Restart the server
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        gcloud compute ssh lendex-small --zone=us-east1-b --command="cd /app && pm2 restart all"
+        ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no cloud-build@34.138.87.118 "cd /app && pm2 restart all"
