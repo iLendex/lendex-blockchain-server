@@ -9,7 +9,7 @@ import { getAllLoans } from './db/queries';
 dotenv.config();
 
 const app = express();
-const port = 8080;
+const port = 3001;
 
 // Enable CORS for all routes
 app.use('/*', cors({
@@ -41,5 +41,5 @@ listenLendexEvent(LendexEvent.ERC721Received);
 listenLendexEvent(LendexEvent.FulfillResponse);
 
 app.listen(port, () => {
-  return console.log(`Express is listening at http://localhost:${port}`);
+  return console.log(`Express is listening at port:${port}`);
 });
