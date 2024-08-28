@@ -7,7 +7,7 @@ import { getAbiForContract } from "../utils/ethereum-get-contract-abi";
 import { Alchemy, AlchemyEventType, Utils } from "alchemy-sdk";
 import { getEthereumNetwork } from "../utils/ethereum-network-mapping";
 import { decodeERC721ReceivedEvent, decodeFulfillResponseEvent } from "../utils/ethereum-lendex-events";
-import { getLoanByFliters, updateLoan } from "../db/queries";
+import { getChainlinkSecrets, getLoanByFliters, insertChanlinkSecrets, updateLoan } from "../db/queries";
 import { loanStateEnum } from "../db/schema";
 
 // Load environment variables from .env file
@@ -21,6 +21,9 @@ const subscriptionId = process.env.CHAINLINK_SUBSCRIPTION_ID as string;
 const donId = process.env.CHAINLINK_DON_ID as string;
 const routerAddress = process.env.CHAINLINK_FUNCTIONS_ROUTER as string;
 const linkTokenAddress = process.env.CHAINLINK_TOKEN_ADDRESS as string;
+const chainlinkSecretsUrl = process.env.CHAINLINK_SECRETS_URL;
+const chainlinkSecretsVersion = parseInt(process.env.CHAINLINK_SECRETS_VERSION);
+const network = process.env.NETWORK;
 
 const subscriptionManager = new SubscriptionManager({
   signer: signer,
@@ -34,13 +37,6 @@ const secretsManager = new SecretsManager({
   donId: donId,
 });
 
-const gatewayUrls = [
-  "https://01.functions-gateway.testnet.chain.link/",
-  "https://02.functions-gateway.testnet.chain.link/"
-];
-const slotIdNumber = 0;
-const expirationTimeMinutes = 15;
-
 const source = fs.readFileSync('./src/utils/source.js').toString();
 const gasLimit = 300000;
 let contractABI;
@@ -50,6 +46,8 @@ const alchemy = new Alchemy({
   network: getEthereumNetwork(process.env.NETWORK),
 });
 
+console.log("Alchemy config:", alchemy.config);
+
 export async function getEthBalance(address: string): Promise<string> {
   const balance = await provider.getBalance(address);
   return ethers.utils.formatEther(balance);
@@ -57,13 +55,7 @@ export async function getEthBalance(address: string): Promise<string> {
 
 export async function borrowToken(): Promise<borrowTokenParamType> {
   await subscriptionManager.initialize();
-  await secretsManager.initialize();
   const gasPriceWei = (await signer.getGasPrice()).toBigInt();
-  // const source = await fetchSourceFile();
-  // console.log("Source file content:", source);
-  const secrets = {
-    apiKey: "preprodpLkt9N7JA00zp72yPwdSd2bHFla7z1s4",
-  };
 
   //////// ESTIMATE REQUEST COSTS ////////
 
@@ -78,21 +70,13 @@ export async function borrowToken(): Promise<borrowTokenParamType> {
 
   console.log(`Fulfillment function cost estimated to ${ethers.utils.formatEther(estimatedCostInJuels)} LINK`);
 
-  console.log("\nMake request...");
-  const encryptedSecretsObj = await secretsManager.encryptSecrets(secrets);
-  const uploadResult = await secretsManager.uploadEncryptedSecretsToDON({
-    encryptedSecretsHexstring: encryptedSecretsObj.encryptedSecrets,
-    gatewayUrls: gatewayUrls,
-    slotId: slotIdNumber,
-    minutesUntilExpiration: expirationTimeMinutes,
-  });
-
-  if (!uploadResult.success) {
-    throw new Error(`Encrypted secrets not uploaded to ${gatewayUrls}`);
+  console.log("Get secrets...");
+  let secretsUrl = await getChainlinkSecretsUrl(network, chainlinkSecretsVersion);
+  if (!secretsUrl) {
+    throw new Error(`Encrypted secrets not uploaded for ${network} and version: ${chainlinkSecretsVersion}`);
   }
-  console.log(`\n✅ Secrets uploaded properly to gateways ${gatewayUrls}! Gateways response: `, uploadResult);
+  console.log(`\n✅ Secrets uploaded properly to ${network} and version: ${chainlinkSecretsVersion}, url: ${secretsUrl}`);
 
-  const donHostedSecretsVersion = Number(uploadResult.version);
   if (!contractABI) {
     contractABI = await getAbiForContract(process.env.LENDEX_CONTRACT_ADDRESS);
   }
@@ -100,8 +84,7 @@ export async function borrowToken(): Promise<borrowTokenParamType> {
     consumerAddress: consumerAddress,
     contractABI: contractABI,
     source: source,
-    slotIdNumber,
-    donHostedSecretsVersion
+    encryptedSecretsUrl: secretsUrl
   };
 
   return borrowTypeObject;
@@ -111,9 +94,6 @@ export async function payDebt(): Promise<borrowTokenParamType> {
   await subscriptionManager.initialize();
   await secretsManager.initialize();
   const gasPriceWei = (await signer.getGasPrice()).toBigInt();
-  const secrets = {
-    apiKey: "preprodpLkt9N7JA00zp72yPwdSd2bHFla7z1s4",
-  };
 
   console.log("\nEstimate function request costs...");
   const estimatedCostInJuels = await subscriptionManager.estimateFunctionsRequestCost({
@@ -125,21 +105,11 @@ export async function payDebt(): Promise<borrowTokenParamType> {
 
   console.log(`Fulfillment function cost estimated to ${ethers.utils.formatEther(estimatedCostInJuels)} LINK`);
 
-  console.log("\nPrepare pay debt request...");
-  const encryptedSecretsObj = await secretsManager.encryptSecrets(secrets);
-  const uploadResult = await secretsManager.uploadEncryptedSecretsToDON({
-    encryptedSecretsHexstring: encryptedSecretsObj.encryptedSecrets,
-    gatewayUrls: gatewayUrls,
-    slotId: slotIdNumber,
-    minutesUntilExpiration: expirationTimeMinutes,
-  });
-
-  if (!uploadResult.success) {
-    throw new Error(`Encrypted secrets not uploaded to ${gatewayUrls}`);
+  let secretsUrl = await getChainlinkSecretsUrl(network, chainlinkSecretsVersion);
+  if (!secretsUrl) {
+    throw new Error(`Encrypted secrets not uploaded for ${network} and version: ${chainlinkSecretsVersion}`);
   }
-  console.log(`\n✅ Secrets uploaded properly to gateways ${gatewayUrls}! Gateways response: `, uploadResult);
-
-  const donHostedSecretsVersion = Number(uploadResult.version);
+  console.log(`\n✅ Secrets uploaded properly to ${network} and version: ${chainlinkSecretsVersion}, url: ${secretsUrl}`);
   if (!contractABI) {
     contractABI = await getAbiForContract(process.env.LENDEX_CONTRACT_ADDRESS);
   }
@@ -147,8 +117,7 @@ export async function payDebt(): Promise<borrowTokenParamType> {
     consumerAddress: consumerAddress,
     contractABI: contractABI,
     source: source,
-    slotIdNumber,
-    donHostedSecretsVersion
+    encryptedSecretsUrl: secretsUrl
   };
 
   return payDebtTypeObject;
@@ -186,15 +155,7 @@ export function listenLendexEvent(event: LendexEvent) {
           if (success && type != FulfillResponseType.UNKNOWN) {
             const requestId = log.topics[1];
             console.log('FulfillResponse: ', { requestId, type, success, loanInfo });
-            const state = type == FulfillResponseType.BORROW_CHECK ? loanStateEnum.enumValues[3] : loanStateEnum.enumValues[2];
-            const loan = await getLoanByFliters({ 'acceptLoanRequestId': requestId });
-            if (loan) {
-              try {
-                await updateLoan(loan.id, { state });
-              } catch (error) {
-                console.error(error);
-              }
-            }
+            await updateLoanRequest(type, requestId);
             break
           }
         }
@@ -204,4 +165,42 @@ export function listenLendexEvent(event: LendexEvent) {
       }
     }
   );
+}
+
+async function updateLoanRequest(type: FulfillResponseType, requestId: string,): Promise<void> {
+  const { state, column } = type == FulfillResponseType.BORROW_CHECK ?
+    { state: loanStateEnum.enumValues[3], column: "acceptLoanRequestId" } :
+    { state: loanStateEnum.enumValues[2], column: "payDebtRequestId" };
+  const loan = await getLoanByFliters({ [column]: requestId });
+  if (loan) {
+    try {
+      await updateLoan(loan.id, { state });
+    } catch (error) {
+      console.error('Update Loan Request Error:', error);
+    }
+  }
+}
+
+async function getChainlinkSecretsUrl(network: string, version: number): Promise<string> {
+  const secrets = await getChainlinkSecrets(network, version);
+  return secrets?.encryptedUrl;
+}
+
+export async function uploadSecrets(secrets: Record<string, string>, network: string, version: number): Promise<string> {
+  await secretsManager.initialize();
+  const encryptedSecretsObj = await secretsManager.encryptSecrets(secrets);
+  const secretsUrls = [`${chainlinkSecretsUrl}/${network}/${version}`];
+  const encryptedSecretsUrls = await secretsManager.encryptSecretsUrls(
+    secretsUrls
+  );
+  // add secrest object to db
+  await insertChanlinkSecrets(JSON.stringify(encryptedSecretsObj), encryptedSecretsUrls, network, version);
+  console.log(`\Secret URLs:`, secretsUrls);
+  console.log(`\nEncrypted URLs:`, encryptedSecretsUrls);
+  return encryptedSecretsUrls;
+}
+
+export async function getChainlinkSecretsObj(network: string, version: number): Promise<{ encryptedSecrets: string }> {
+  const secrets = await getChainlinkSecrets(network, version);
+  return secrets?.secrets ? JSON.parse(secrets?.secrets) : { encryptedSecrets: "" };
 }

@@ -94,4 +94,23 @@ export const loanTable = pgTable(
     })
 );
 
+//USER TABLE
+export const chainlinkSecretsTable = pgTable(
+    "launch_chainlink_secrets",
+    {
+        id: uuid("id").primaryKey().defaultRandom(),
+        network: varchar("network", { length: 256 }).notNull(),
+        secrets: text("secrets").notNull(),
+        version: bigint("version", { mode: 'number' }).notNull(),
+        encryptedUrl: text("encrypted_url").notNull(),
+        createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    },
+    (example) => ({
+        nameIndex: index("network_idx").on(example.network),
+    })
+);
+
 export type SelectLoan = typeof loanTable.$inferSelect;
+export type SelectChainlinkSecrets = typeof chainlinkSecretsTable.$inferSelect;
+export type InsertChainlinkSecrets = typeof chainlinkSecretsTable.$inferInsert;
+export type LoanRequestId = typeof loanTable.acceptLoanRequestId | typeof loanTable.payDebtRequestId;

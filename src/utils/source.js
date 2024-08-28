@@ -4,7 +4,7 @@ const { decode } = await import("https://deno.land/x/cbor@v1.5.9/decode.js");
 const { encodeHex } = await import("https://deno.land/std@0.224.0/encoding/hex.ts");
 const ethers = await import("npm:ethers@6.10.0");
 
-const policyId = "9cd3e3a2ecd8cf4bb81da108bdc4366a40208c05e568ac913ae71cec"; // generated from nonce: fromText("Lendex#2");
+const policyId = "d309c0b5acc7702dd1a9e5ba3713c85e428549f728099e0e5b9d472c"; // generated from nonce: fromText("Lendex#3");
 const contractAddress = "addr_test1wrt2zjjdqfaulpcmnv6gwzavpaajjgsxfklk3zmjnx3y30qz42a4w";
 
 // Arguments can be provided when a request is initated on-chain and used in the request source code as shown below

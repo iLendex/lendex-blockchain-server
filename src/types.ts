@@ -5,9 +5,7 @@ export type borrowTokenParamType = {
   consumerAddress: string;
   contractABI: Interface;
   source: string;
-  slotIdNumber: number;
-  donHostedSecretsVersion: number;
-
+  encryptedSecretsUrl: string;
 }
 
 export interface payDebtParamType {
@@ -17,9 +15,8 @@ export interface payDebtParamType {
   contractAddress: string;
   tokenId: string;
   lenderAddress: string;
-  slotIdNumber: number;
-  donHostedSecretsVersion: number;
   args: string[];
+  encryptedSecretsUrl: string;
 }
 
 export enum LendexEvent {
